@@ -1,6 +1,9 @@
 import peewee as p
+import os
+from dotenv import load_dotenv
+load_dotenv('data.env')
 
-db=p.MySQLDatabase('tgqr',user='root',password='3WWW2s1x4x5x',host='127.0.0.1',
+db=p.MySQLDatabase(os.getenv('NAMEDB'),user='root',password=os.getenv('PASSFORDB'),host='127.0.0.1',
                    port=3306)
 class BaseModel(p.Model):
     id=p.AutoField
