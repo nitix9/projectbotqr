@@ -31,7 +31,5 @@ class BuyList(BaseModel):
     product_type_id=p.ForeignKeyField(ProductType,backref='type')
     class Meta:
         table_name='Buy_lists'
-with db as con:
+# with db as con:
 #     con.create_tables([User,Group,ProductType,BuyList])
-    addu=User(firstname='aaa',lastname='uuu',tgid=123123414)
-    addu.save()
