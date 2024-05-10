@@ -17,10 +17,14 @@ class User(BaseModel):
         table_name='Users'
 class Group(BaseModel):
     name=p.CharField()
-    groupid=p.IntegerField()
-    usersid=p.ForeignKeyField(User,backref='user')
+    groupchatid=p.BigIntegerField()
     class Meta:
         table_name='Groups'
+class GroupUser(BaseModel):
+    usersid=p.ForeignKeyField(User,backref='usercode')
+    groupid=p.ForeignKeyField(Group,backref='groupcode')
+    class Meta:
+        table_name='Group_User'
 class ProductType(BaseModel):
     name=p.CharField()
     class Meta:
@@ -32,4 +36,4 @@ class BuyList(BaseModel):
     class Meta:
         table_name='Buy_lists'
 # with db as con:
-#     con.create_tables([User,Group,ProductType,BuyList])
+#      con.create_tables([User,Group,GroupUser,ProductType,BuyList])

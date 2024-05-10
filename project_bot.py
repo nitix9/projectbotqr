@@ -10,6 +10,18 @@ import models as m
 
 
 with m.db as db:
+    class Group:
+        def create_group (self,namegroup,idgroup) :
+            addgroup=m.Group(name=namegroup,groupchatid=idgroup)
+            addgroup.save()
+    class User:
+        def add_user(self,fname,lname,idtg):
+            adduser=m.User(firstname=fname,lastname=lname,tgid=idtg)
+            adduser.save()
+    class GroupUser:
+        def add_user_group(self,iduser,idgroup):
+            add_userin_group=m.GroupUser(usersid=iduser,groupid=idgroup)
+            add_userin_group.save()
     load_dotenv('data.env')
     purch_bot = tb.TeleBot(os.getenv('API'))
 
@@ -19,8 +31,9 @@ with m.db as db:
     @purch_bot.message_handler(commands=['start', 'about'])
     def greeting(message):
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton(text='Пойти в магазин', callback_data='go_shopping'))
-        
+        # markup.add(types.InlineKeyboardButton(text='Пойти в магазин', callback_data='go_shopping'))
+        markup.add(types.InlineKeyboardButton(text='✔ Создать группу ✔', callback_data='bdgroup'))
+        markup.add(types.InlineKeyboardButton(text='🤔 Как использовать бота❔', callback_data='info'))
         purch_bot.send_message(message.chat.id, 'Выберите действие', reply_markup=markup)
 
 
@@ -28,7 +41,6 @@ with m.db as db:
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(text='Отправить QR-код', callback_data='qr'))
         markup.add(types.InlineKeyboardButton(text='Отправить расшифровку QR-кода', callback_data='qrdec'))
-        markup.add(types.InlineKeyboardButton(text='О боте', callback_data='info'))
         
         purch_bot.send_message(message.chat.id, 'Выберите действие', reply_markup=markup)
 
@@ -86,42 +98,82 @@ with m.db as db:
         elif callback.data == 'info':
             print('info')
             purch_bot.answer_callback_query(callback.id)
-        #Поход за покупками
-        elif callback.data == 'go_shopping':
-            going_user = f'{callback.from_user.first_name}, идёт в магазин!'
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton(text='Отправить лист покупок', callback_data='buy_list'))
-            purch_bot.send_message(callback.message.chat.id, going_user, reply_markup=markup)
-            buy_list['ready_users'] = 0
-            buy_list['users'] = {}
-        #Готовность о завершении добавления в список
-        elif callback.data == 'ready':
-            if callback.from_user.id in buy_list['users']:
-                buy_list['ready_users'] += 1
-                if buy_list['ready_users'] == len(buy_list['users']):
-                    purch_bot.send_message(callback.message.chat.id, 'Список сформирован!')
-                    buy_list['ready_users'] = 0
-                    buy_list['users'] = {}
+        # elif callback.data=='new_group':
+        #     markupgroup=types.InlineKeyboardMarkup()
+        #     markupgroup.add(types.InlineKeyboardButton(text='✅', callback_data='bdgroup'))
+        #     purch_bot.send_message(callback.message.chat.id, '🤝Для добавления в группу нажмите кнопку ниже ⬇', reply_markup=markupgroup)
+        elif callback.data=='bdgroup':
+            filtergr=m.Group.select().where(m.Group.groupchatid == callback.message.chat.id).count()
+            if filtergr==0:
+                addgroup=Group()
+                addgroup.create_group(callback.message.chat.title,callback.message.chat.id)
+                markupgroup=types.InlineKeyboardMarkup()
+                markupgroup.add(types.InlineKeyboardButton(text='💎', callback_data='add_user_group'))
+                purch_bot.send_message(callback.message.chat.id, '✅ Группа успешно создана! Для добавления в группу нажмине на кнопку ниже ⬇', reply_markup=markupgroup)
             else:
-                purch_bot.send_message(callback.message.chat.id, 'Вы не запросили список покупок!')
-            print(callback.data)
-        #Добавление в список
-        elif callback.data == 'buy_list':
-            purch_bot.send_message(callback.message.chat.id, 'Напишите список покупок. И когда закончите нажмите кнопку "Готово".')
-
-            @purch_bot.message_handler(content_types=['text'])
-            def add_in_list(message):
-                if message.from_user.id not in buy_list['users']:
-                    buy_list['users'][message.from_user.id] = {message.from_user.first_name: []}
+                markupaddusingr=types.InlineKeyboardMarkup()
+                markupaddusingr.add(types.InlineKeyboardButton(text='💎', callback_data='add_user_group'))
+                purch_bot.send_message(callback.message.chat.id, '🧐 Ваша группа уже создана! Для добавления в группу нажмине на кнопку ниже ⬇',reply_markup=markupaddusingr)
+        elif callback.data=='add_user_group':
+            filteruser=m.User.select().where(m.User.tgid==callback.from_user.id).count()
+            if filteruser==0:
+                if callback.from_user.last_name==None:
+                    adduser=User()
+                    adduser.add_user(callback.from_user.first_name,'Не указано',callback.from_user.id)
                 else:
-                    buy_list['users'][message.from_user.id][message.from_user.first_name].append(message.text)
-                    
-                list_markup = types.InlineKeyboardMarkup()
-                list_markup.add(types.InlineKeyboardButton(text='Готово', callback_data='ready'))
-                purch_bot.send_message(callback.message.chat.id, 'Что бы вы ещё хотели добавить?', reply_markup=list_markup)
+                    adduser=User()
+                    adduser.add_user(callback.from_user.first_name,callback.from_user.last_name,callback.from_user.id)
+            userdata=m.User.select().where(m.User.tgid==callback.from_user.id).get()
+            userid=userdata.id
+            groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
+            groupid=groupdata.id
+            filtergroupuser=m.GroupUser.select().where ((m.GroupUser.usersid==userid) & (m.GroupUser.groupid==groupid)).count()
+            if filtergroupuser==0:
+                adduseringr=GroupUser()
+                adduseringr.add_user_group(userid,groupid)
+                purch_bot.send_message(callback.message.chat.id, '🙌 Вы добавлены в группу!')
+            else:
+                purch_bot.send_message(callback.message.chat.id, '🥳 Вы уже состоите в этой группе')
 
-                print(buy_list)
-                print(len(buy_list['users']))
-                print(callback.data)
+
+
+            
+        #Поход за покупками
+        # elif callback.data == 'go_shopping':
+        #     going_user = f'{callback.from_user.first_name}, идёт в магазин!'
+        #     markup = types.InlineKeyboardMarkup()
+        #     markup.add(types.InlineKeyboardButton(text='Отправить лист покупок', callback_data='buy_list'))
+        #     purch_bot.send_message(callback.message.chat.id, going_user, reply_markup=markup)
+        #     buy_list['ready_users'] = 0
+        #     buy_list['users'] = {}
+        #Готовность о завершении добавления в список
+        # elif callback.data == 'ready':
+        #     if callback.from_user.id in buy_list['users']:
+        #         buy_list['ready_users'] += 1
+        #         if buy_list['ready_users'] == len(buy_list['users']):
+        #             purch_bot.send_message(callback.message.chat.id, 'Список сформирован!')
+        #             buy_list['ready_users'] = 0
+        #             buy_list['users'] = {}
+        #     else:
+        #         purch_bot.send_message(callback.message.chat.id, 'Вы не запросили список покупок!')
+        #     print(callback.data)
+        #Добавление в список
+        # elif callback.data == 'buy_list':
+        #     purch_bot.send_message(callback.message.chat.id, 'Напишите список покупок. И когда закончите нажмите кнопку "Готово".')
+
+        #     @purch_bot.message_handler(content_types=['text'])
+        #     def add_in_list(message):
+        #         if message.from_user.id not in buy_list['users']:
+        #             buy_list['users'][message.from_user.id] = {message.from_user.first_name: []}
+        #         else:
+        #             buy_list['users'][message.from_user.id][message.from_user.first_name].append(message.text)
+                    
+        #         list_markup = types.InlineKeyboardMarkup()
+        #         list_markup.add(types.InlineKeyboardButton(text='Готово', callback_data='ready'))
+        #         purch_bot.send_message(callback.message.chat.id, 'Что бы вы ещё хотели добавить?', reply_markup=list_markup)
+
+        #         print(buy_list)
+        #         print(len(buy_list['users']))
+        #         print(callback.data)
 
     purch_bot.infinity_polling()
