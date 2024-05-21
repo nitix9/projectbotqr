@@ -13,6 +13,8 @@ import threading
 with m.db as db:
     class Group:
         def create_group (self,namegroup,idgroup) :
+            if namegroup==None:
+                namegroup='Общие покупки'
             addgroup=m.Group(name=namegroup,groupchatid=idgroup)
             addgroup.save()
     class User:
