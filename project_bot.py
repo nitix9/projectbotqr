@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import os
 import peewee as p
 import models as m
+import threading
 
 
 with m.db as db:
@@ -34,6 +35,7 @@ with m.db as db:
         # markup.add(types.InlineKeyboardButton(text='Пойти в магазин', callback_data='go_shopping'))
         markup.add(types.InlineKeyboardButton(text='✔ Создать группу ✔', callback_data='bdgroup'))
         markup.add(types.InlineKeyboardButton(text='🤔 Как использовать бота❔', callback_data='info'))
+        markup.add(types.InlineKeyboardButton(text='⏱️Запустить таймер готовности', callback_data='timer'))
         purch_bot.send_message(message.chat.id, 'Выберите действие', reply_markup=markup)
 
 
@@ -127,17 +129,44 @@ with m.db as db:
             userid=userdata.id
             groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
             groupid=groupdata.id
-            filtergroupuser=m.GroupUser.select().where ((m.GroupUser.usersid==userid) & (m.GroupUser.groupid==groupid)).count()
+            filtergroupuser=m.GroupUser.select().where((m.GroupUser.usersid==userid) & (m.GroupUser.groupid==groupid)).count()
             if filtergroupuser==0:
                 adduseringr=GroupUser()
                 adduseringr.add_user_group(userid,groupid)
                 purch_bot.send_message(callback.message.chat.id, '🙌 Вы добавлены в группу!')
             else:
                 purch_bot.send_message(callback.message.chat.id, '🥳 Вы уже состоите в этой группе')
-
-
-
+        #Таймер готовности
+        elif callback.data == 'timer':
+            userdata=m.User.select().where(m.User.tgid==callback.from_user.id).get()
+            userid=userdata.id
+            groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
+            groupid=groupdata.id
+            filtergroupuser=m.GroupUser.select().where((m.GroupUser.usersid==userid) & (m.GroupUser.groupid==groupid)).count()
             
+            if filtergroupuser==1:
+                seconds = 180
+                # Вывод минут
+                while seconds > 0:
+                    if seconds % 60 == 0:
+                        purch_bot.send_message(callback.message.chat.id, f'Осталось {seconds // 60} мин.')
+                    seconds -= 1
+                    # Задержка на одну секунду
+                    threading.Event().wait(1) # Ожидание 1 секунду
+                purch_bot.send_message(callback.message.chat.id, 'Время вышло, список сформирован!')
+                read_qr(callback.message)
+
+
+                # def Ready():
+                #     purch_bot.send_message(callback.message.chat.id, 'Время вышло, список сформирован!')
+                #     read_qr(callback.message)
+
+                # timer = threading.Timer(10, Ready)
+                # timer.start()
+            else:
+                purch_bot.send_message(callback.message.chat.id, 'Вы не можете запустить таймер, так как не состоите в группе!')
+            
+
         #Поход за покупками
         # elif callback.data == 'go_shopping':
         #     going_user = f'{callback.from_user.first_name}, идёт в магазин!'
