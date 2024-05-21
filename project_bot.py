@@ -25,6 +25,18 @@ with m.db as db:
         def add_user_group(self,iduser,idgroup):
             add_userin_group=m.GroupUser(usersid=iduser,groupid=idgroup)
             add_userin_group.save()
+    class Product:
+        def add_product (self,prname):
+            add_pr=m.Product(name=prname)
+            add_pr.save()
+    class Receipt:
+        def add_receipt(self,pop,amnt,totalpr):
+            add_receipt=m.Product(price_one_piece=pop,amount=amnt,totalprice=totalpr)
+            add_receipt.save()
+    class ProductReceipt:
+        def add_product_receipt(self,idpr,idrec):
+            add_pr_rec=m.Product(productid=idpr,receiptid=idrec)
+            add_pr_rec.save()
     load_dotenv('data.env')
     purch_bot = tb.TeleBot(os.getenv('API'))
 
@@ -155,9 +167,9 @@ with m.db as db:
                     seconds -= 1
                     # Задержка на одну секунду
                     threading.Event().wait(1) # Ожидание 1 секунду
+                    purch_bot.register_next_step_handler(callback.message,buylistreader)#проблема с несколькими вызовами функции
                 purch_bot.send_message(callback.message.chat.id, 'Время вышло, список сформирован!')
                 read_qr(callback.message)
-
 
                 # def Ready():
                 #     purch_bot.send_message(callback.message.chat.id, 'Время вышло, список сформирован!')
@@ -167,7 +179,9 @@ with m.db as db:
                 # timer.start()
             else:
                 purch_bot.send_message(callback.message.chat.id, 'Вы не можете запустить таймер, так как не состоите в группе!')
-            
+    def buylistreader(message):
+        purch_bot.send_message(message.chat.id, f'{message.from_user.first_name}, ваш товар добавлен в корзину')
+        print(message)
 
         #Поход за покупками
         # elif callback.data == 'go_shopping':
