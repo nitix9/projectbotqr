@@ -47,5 +47,5 @@ class Product_receipt(BaseModel):
     receiptid=p.ForeignKeyField(Receipts,backref='receipt')
     class Meta:
         table_name='Product_receipt'
-with db as con:
-     con.create_tables([User,Group,GroupUser,BuyList,Product,Receipts,Product_receipt])
+# with db as con:
+#      con.create_tables([User,Group,GroupUser,BuyList,Product,Receipts,Product_receipt])
