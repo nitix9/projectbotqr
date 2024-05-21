@@ -40,6 +40,7 @@ class Receipts (BaseModel):
     price_one_piece=p.DecimalField()
     amount=p.IntegerField()
     totalprice=p.DecimalField()
+    groupsid=p.ForeignKeyField(Group,backref='gr')
     class Meta:
         table_name='Receipts'
 class Product_receipt(BaseModel):
@@ -48,4 +49,4 @@ class Product_receipt(BaseModel):
     class Meta:
         table_name='Product_receipt'
 # with db as con:
-#      con.create_tables([User,Group,GroupUser,BuyList,Product,Receipts,Product_receipt])
+#     con.create_tables([User,Group,GroupUser,BuyList,Product,Receipts,Product_receipt])
