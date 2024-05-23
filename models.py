@@ -44,7 +44,7 @@ class Receipts (BaseModel):
     dateandhour=p.DateTimeField()
     class Meta:
         table_name='Receipts'
-class Product_receipt(BaseModel):
+class ProductReceipt(BaseModel):
     productid=p.ForeignKeyField(Product,backref='product')
     receiptid=p.ForeignKeyField(Receipts,backref='receipt')
     class Meta:
