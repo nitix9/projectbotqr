@@ -33,13 +33,15 @@ with m.db as db:
         def add_product (self,prname,am,pop,totalpr):
             add_pr=m.Product(name=prname,amount=am,price_one_piece=pop,totalprice=totalpr)
             add_pr.save()
+            return add_pr.id
     class Receipt:
         def add_receipt(self,grid,datehour):
             add_receipt=m.Receipts(groupsid=grid,dateandhour=datehour)
             add_receipt.save()
+            return add_receipt.id
     class ProductReceipt:
         def add_product_receipt(self,idpr,idrec):
-            add_pr_rec=m.Product(productid=idpr,receiptid=idrec)
+            add_pr_rec=m.ProductReceipt(productid=idpr,receiptid=idrec)
             add_pr_rec.save()
     class BuyList():
         def add_buylist(self,prdname,gid,uid):
@@ -90,21 +92,28 @@ with m.db as db:
                 try:
                     checkinfo=check.send_data(namepath,None)
                     cont=''
+                    productid=0
+                    recid=0
                     for c in range(0,len(checkinfo)):
                         for i,k in checkinfo[c].items():
                             cont+=str(k)+';'
-                            if len(cont.split(';'))==5:
-                                sendBD=cont.split(';')
-                                addproduct=Product()
-                                addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
-                                cont=''
                             if i =='Дата':
                                 groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
                                 groupid=groupdata.id
                                 addreceipt=Receipt()
-                                addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
+                                recid=addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
+                                cont=cont.replace(f'{k};','')
+                            elif len(cont.split(';'))==5:
+                                sendBD=cont.split(';')
+                                addproduct=Product()
+                                productid=addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
+                                cont=''
+                            filterrec=m.ProductReceipt.select().where((m.ProductReceipt.productid_id == productid )&(m.ProductReceipt.receiptid == recid)).count()
+                            if productid!=0 and recid!=0 and filterrec==0:
+                                addpr_rec=ProductReceipt()
+                                addpr_rec.add_product_receipt(productid,recid)
                     checkinfo=checkinfo.clear()
-                except Exception:purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
+                except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
                 read_qr(message)
     
     
@@ -117,21 +126,29 @@ with m.db as db:
                 try:
                     checkinfo=check.send_data(None,str(message.text))
                     conttxt=''
+                    productid=0
+                    recid=0
                     for c in range(0,len(checkinfo)):
                         for i,k in checkinfo[c].items():
                             conttxt+=str(k)+';'
-                            if len(conttxt.split(';'))==5:
-                                sendBD=conttxt.split(';')
-                                addproduct=Product()
-                                addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
-                                conttxt=''
+                            print (productid,recid)
                             if i =='Дата':
                                 groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
                                 groupid=groupdata.id
                                 addreceipt=Receipt()
-                                addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
+                                recid=addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
+                                conttxt=conttxt.replace(f'{k};','')
+                            elif len(conttxt.split(';'))==5:
+                                sendBD=conttxt.split(';')
+                                addproduct=Product()
+                                productid=addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
+                                conttxt=''
+                            filterrec=m.ProductReceipt.select().where((m.ProductReceipt.productid_id == productid )&(m.ProductReceipt.receiptid == recid)).count()
+                            if productid!=0 and recid!=0 and filterrec==0:
+                                addpr_rec=ProductReceipt()
+                                addpr_rec.add_product_receipt(productid,recid)
                     checkinfo=checkinfo.clear()
-                except Exception:purch_bot.send_message(message.chat.id,text='❗ Не удалось обработать расшифровку QR-кода, проверьте правильность расшифровки или отправьте фото QR-кода ❗')
+                except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обработать расшифровку QR-кода, проверьте правильность расшифровки или отправьте фото QR-кода ❗')
                 read_qr(message)
 
         elif callback.data == 'info':
