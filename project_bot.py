@@ -8,7 +8,7 @@ import os
 import peewee as p
 import models as m
 import threading
-
+from datetime import datetime
 
 with m.db as db:
     class Group:
@@ -30,12 +30,12 @@ with m.db as db:
             add_userin_group=m.GroupUser(usersid=iduser,groupid=idgroup)
             add_userin_group.save()
     class Product:
-        def add_product (self,prname):
-            add_pr=m.Product(name=prname)
+        def add_product (self,prname,am,pop,totalpr):
+            add_pr=m.Product(name=prname,amount=am,price_one_piece=pop,totalprice=totalpr)
             add_pr.save()
     class Receipt:
-        def add_receipt(self,pop,amnt,totalpr):
-            add_receipt=m.Product(price_one_piece=pop,amount=amnt,totalprice=totalpr)
+        def add_receipt(self,grid,datehour):
+            add_receipt=m.Receipts(groupsid=grid,dateandhour=datehour)
             add_receipt.save()
     class ProductReceipt:
         def add_product_receipt(self,idpr,idrec):
@@ -92,10 +92,17 @@ with m.db as db:
                     cont=''
                     for c in range(0,len(checkinfo)):
                         for i,k in checkinfo[c].items():
-                            if i == 'Наименование':
-                                cont+='\n'
-                            cont+=str(i)+' : '+str(k)+' 💎\n'
-                    purch_bot.send_message(message.chat.id,text=cont)
+                            cont+=str(k)+';'
+                            if len(cont.split(';'))==5:
+                                sendBD=cont.split(';')
+                                addproduct=Product()
+                                addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
+                                cont=''
+                            if i =='Дата':
+                                groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
+                                groupid=groupdata.id
+                                addreceipt=Receipt()
+                                addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
                     checkinfo=checkinfo.clear()
                 except Exception:purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
                 read_qr(message)
@@ -112,10 +119,17 @@ with m.db as db:
                     conttxt=''
                     for c in range(0,len(checkinfo)):
                         for i,k in checkinfo[c].items():
-                            if i == 'Наименование':
-                                conttxt+='\n'
-                            conttxt+=str(i)+' : '+str(k)+' 💎\n'
-                    purch_bot.send_message(message.chat.id,text=conttxt)
+                            conttxt+=str(k)+';'
+                            if len(conttxt.split(';'))==5:
+                                sendBD=conttxt.split(';')
+                                addproduct=Product()
+                                addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
+                                conttxt=''
+                            if i =='Дата':
+                                groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
+                                groupid=groupdata.id
+                                addreceipt=Receipt()
+                                addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
                     checkinfo=checkinfo.clear()
                 except Exception:purch_bot.send_message(message.chat.id,text='❗ Не удалось обработать расшифровку QR-кода, проверьте правильность расшифровки или отправьте фото QR-кода ❗')
                 read_qr(message)

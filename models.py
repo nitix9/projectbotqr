@@ -34,13 +34,14 @@ class BuyList(BaseModel):
         table_name='Buy_lists'
 class Product (BaseModel):
     name=p.CharField()
+    amount=p.IntegerField()
+    price_one_piece=p.DecimalField()
+    totalprice=p.DecimalField()
     class Meta:
         table_name='Products'
 class Receipts (BaseModel):
-    price_one_piece=p.DecimalField()
-    amount=p.IntegerField()
-    totalprice=p.DecimalField()
     groupsid=p.ForeignKeyField(Group,backref='gr')
+    dateandhour=p.DateTimeField()
     class Meta:
         table_name='Receipts'
 class Product_receipt(BaseModel):

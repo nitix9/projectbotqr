@@ -36,4 +36,7 @@ def send_data(path=None,decqr=None):
                 if k=='sum': 
                     sum=allticketinf[n][k]/100 
             alldata.allneedinf.append({'Наименование':name,'Цена за шт.':price,'Количество товара':quantity,'Общая стоимость':sum})
+    alldata.allneedinf.append({'Дата':ticket['ticket']['document']['receipt']['dateTime']})
     return alldata.allneedinf 
+# a=send_data(None,'t=20231114T2033&s=702.00&fn=7281440500926808&i=18110&fp=1165805896&n=1')
+# print(a)
