@@ -207,7 +207,7 @@ with m.db as db:
             if m.User.select().where(m.User.tgid==callback.from_user.id).count()==0 or m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).count()==0:
                 markupaddusrorgr=types.InlineKeyboardMarkup()
                 markupaddusrorgr.add(types.InlineKeyboardButton(text='✔ Создать группу ✔', callback_data='bdgroup'))
-                purch_bot.send_message(callback.message.chat.id,'😦 Прхоже у вас нет группы или вы не состоите в ней, давайте это испрвим!',reply_markup=markupaddusrorgr)
+                purch_bot.send_message(callback.message.chat.id,'😦 Похоже у вас нет группы или вы не состоите в ней, давайте это испрвим!',reply_markup=markupaddusrorgr)
             else:
                 userdata=m.User.select().where(m.User.tgid==callback.from_user.id).get()
                 userid=userdata.id
