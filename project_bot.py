@@ -9,7 +9,7 @@ import peewee as p
 import models as m
 import threading
 from datetime import datetime
-
+import Levenshtein
 with m.db as db:
     class Group:
         def create_group (self,namegroup,idgroup) :
@@ -113,6 +113,18 @@ with m.db as db:
                                 addpr_rec=ProductReceipt()
                                 addpr_rec.add_product_receipt(productid,recid)
                     checkinfo=checkinfo.clear()
+                    queryproduct=m.Product.select().join(m.ProductReceipt).where(m.ProductReceipt.receiptid==recid)
+                    answprod=queryproduct.dicts().execute()
+                    queryreceipt=m.BuyList.select().where(m.BuyList.grid==groupid)
+                    answrec=queryreceipt.dicts().execute()
+                    for i in answprod:
+                        for s in answrec:
+                            if Levenshtein.ratio(i.get('name').lower(),s.get('product_name').lower()) >0.5:
+                                debt=m.User.get(m.User.id==s.get('usid'))
+                                purch_bot.send_message(message.chat.id(str(debt.firstname) + f' должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.'))
+                    clearlist = m.BuyList.delete().where(m.BuyList.grid==groupid)
+                    clearlist.execute()
+
                 except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
                 read_qr(message)
     
