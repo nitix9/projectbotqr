@@ -121,9 +121,9 @@ with m.db as db:
                         for s in answrec:
                             if Levenshtein.ratio(i.get('name').lower(),s.get('product_name').lower()) >0.5:
                                 debt=m.User.get(m.User.id==s.get('usid'))
-                                purch_bot.send_message(message.chat.id(str(debt.firstname) + f' должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.'))
-                    clearlist = m.BuyList.delete().where(m.BuyList.grid==groupid)
-                    clearlist.execute()
+                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f' должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.')
+                    clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
+                    clearbuylist.execute()
 
                 except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
                 read_qr(message)
@@ -204,26 +204,31 @@ with m.db as db:
                 purch_bot.send_message(callback.message.chat.id, '🥳 Вы уже состоите в этой группе')
         #Таймер готовности
         elif callback.data == 'goingshop':
-            userdata=m.User.select().where(m.User.tgid==callback.from_user.id).get()
-            userid=userdata.id
-            groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
-            groupid=groupdata.id
-            filtergroupuser=m.GroupUser.select().where((m.GroupUser.usersid==userid) & (m.GroupUser.groupid==groupid)).count()
-            filterbuyer=m.User.select().join(m.GroupUser).where((m.User.id==userid) & (m.User.status==1) & (m.GroupUser.groupid_id==groupid)).count()
-            if filterbuyer ==0:
-                updatestat=User()
-                updatestat.update_user(userid,stat=1)
-                if filtergroupuser==1:
-                    markupwentshop=types.InlineKeyboardMarkup()
-                    markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
-                    purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
-                    
-                    @purch_bot.message_handler(content_types=['text'])
-                    def readerbuylist(message):
-                        customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
-                        customerid=customerdata.id
-                        addbuyls=BuyList()
-                        addbuyls.add_buylist(message.text,groupid,customerid)
+            if m.User.select().where(m.User.tgid==callback.from_user.id).count()==0 or m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).count()==0:
+                markupaddusrorgr=types.InlineKeyboardMarkup()
+                markupaddusrorgr.add(types.InlineKeyboardButton(text='✔ Создать группу ✔', callback_data='bdgroup'))
+                purch_bot.send_message(callback.message.chat.id,'😦 Прхоже у вас нет группы или вы не состоите в ней, давайте это испрвим!',reply_markup=markupaddusrorgr)
+            else:
+                userdata=m.User.select().where(m.User.tgid==callback.from_user.id).get()
+                userid=userdata.id
+                groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
+                groupid=groupdata.id
+                filtergroupuser=m.GroupUser.select().where((m.GroupUser.usersid==userid) & (m.GroupUser.groupid==groupid)).count()
+                filterbuyer=m.User.select().join(m.GroupUser).where((m.User.id==userid) & (m.User.status==1) & (m.GroupUser.groupid_id==groupid)).count()
+                if filterbuyer ==0:
+                    updatestat=User()
+                    updatestat.update_user(userid,stat=1)
+                    if filtergroupuser==1:
+                        markupwentshop=types.InlineKeyboardMarkup()
+                        markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
+                        purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
+                        
+                        @purch_bot.message_handler(content_types=['text'])
+                        def readerbuylist(message):
+                            customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
+                            customerid=customerdata.id
+                            addbuyls=BuyList()
+                            addbuyls.add_buylist(message.text,groupid,customerid)
                         
             #     seconds = 180
             #     # Вывод минут
@@ -242,10 +247,10 @@ with m.db as db:
 
             #     # timer = threading.Timer(10, Ready)
             #     # timer.start()
+                    else:
+                        purch_bot.send_message(callback.message.chat.id, 'Вы не можете запустить таймер, так как не состоите в группе!')
                 else:
-                    purch_bot.send_message(callback.message.chat.id, 'Вы не можете запустить таймер, так как не состоите в группе!')
-            else:
-                purch_bot.send_message(callback.message.chat.id, '😡 У вас уже есть человек, который пойдет в магазин❗')
+                    purch_bot.send_message(callback.message.chat.id, '😡 У вас уже есть человек, который пойдет в магазин❗')
         
         elif callback.data == 'wentshop':
             userdata=m.User.select().where(m.User.tgid==callback.from_user.id).get()
