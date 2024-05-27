@@ -10,6 +10,8 @@ import models as m
 import threading
 from datetime import datetime
 import Levenshtein
+from peewee import fn
+
 with m.db as db:
     class Group:
         def create_group (self,namegroup,idgroup) :
@@ -121,7 +123,7 @@ with m.db as db:
                         for s in answrec:
                             if Levenshtein.ratio(i.get('name').lower(),s.get('product_name').lower()) >0.5:
                                 debt=m.User.get(m.User.id==s.get('usid'))
-                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f' должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.')
+                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f" должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.")
                     clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
                     clearbuylist.execute()
 
@@ -262,6 +264,19 @@ with m.db as db:
                 updatestatzer=User()
                 updatestatzer.update_user(userid,stat=0)
                 purch_bot.send_message(callback.message.chat.id, f'💨{callback.from_user.first_name} ушел в магазин ❗ Товары больше не добавляются ❗')
+                
+                usbuy_tg = 'Список покупок:'
+                users_in_buylist = m.BuyList.select(m.BuyList.usid).distinct().dicts().execute()
+                for user_id in users_in_buylist:
+                    users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == user_id['usid']).dicts().execute()
+                    # for i in users_reqs:
+                    #     print(i)
+                    user_nick = m.User.select(m.User.firstname).where(m.User.id == user_id['usid']).get().firstname
+                    usbuy_tg += "\n👨 " + user_nick + ":\n"
+                    for prod in users_reqs:
+                        usbuy_tg += "🧺 " + prod['product_name'] + " " +str(prod['amount_prod']) + ' шт.\n'
+                purch_bot.send_message(callback.message.chat.id, usbuy_tg)
+
                 read_qr(callback.message)
 
     
