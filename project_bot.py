@@ -11,6 +11,7 @@ import threading
 from datetime import datetime
 import Levenshtein
 from peewee import fn
+import re
 
 with m.db as db:
     class Group:
@@ -223,14 +224,21 @@ with m.db as db:
                     if filtergroupuser==1:
                         markupwentshop=types.InlineKeyboardMarkup()
                         markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
-                        purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
+                        purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список в формате название/количество❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
                         
+                        pattern = r"([а-яА-Я]*\s?[а-я]*\s?)/.*\s?(\d)"
                         @purch_bot.message_handler(content_types=['text'])
                         def readerbuylist(message):
-                            customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
-                            customerid=customerdata.id
-                            addbuyls=BuyList()
-                            addbuyls.add_buylist(message.text,groupid,customerid)
+                            if re.match(pattern, message.text) is not None:
+                                customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
+                                customerid=customerdata.id
+                                addbuyls=BuyList()
+                                request = re.findall(pattern, message.text)
+                                for prods in request:
+                                    for i in range(int(prods[1])):
+                                        addbuyls.add_buylist(prods[0], groupid, customerid)
+                            else:
+                                purch_bot.send_message(callback.message.chat.id, f"Введите запрос корректно, {message.from_user.first_name}!")
                         
             #     seconds = 180
             #     # Вывод минут
