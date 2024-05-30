@@ -50,4 +50,4 @@ class ProductReceipt(BaseModel):
     class Meta:
         table_name='Product_receipt'
 # with db as con:
-#     con.create_tables([User,Group,GroupUser,BuyList,Product,Receipts,Product_receipt])
+#     con.create_tables([User,Group,GroupUser,BuyList,Product,Receipts,ProductReceipt])
