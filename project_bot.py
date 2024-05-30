@@ -11,6 +11,7 @@ import threading
 from datetime import datetime
 import Levenshtein
 from peewee import fn
+import re
 
 with m.db as db:
     class Group:
@@ -119,15 +120,21 @@ with m.db as db:
                     answprod=queryproduct.dicts().execute()
                     queryreceipt=m.BuyList.select().where(m.BuyList.grid==groupid)
                     answrec=queryreceipt.dicts().execute()
+                    debtors=''
+                    lastdebtors='nottodo'
+                    nextdebtors=''
                     for princh in answprod:
                         for s in answrec:
                             if Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()) >0.5:
-                                users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where(m.BuyList.grid==groupid).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
+                                users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where((m.BuyList.grid==groupid) & (m.BuyList.product_name==s.get('product_name'))).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
                                 for i in users_reqs:
-                                    print(i)
-                                print(princh)
-                                debt=m.User.get(m.User.id==s.get('usid'))
-                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f" должен {float(princh.get('totalprice'))} за {s.get('product_name')} - {princh.get('amount')} шт.")
+                                    debt=m.User.get(m.User.id==s.get('usid'))
+                                    nextdebtors='😇 '+str(debt.firstname) + f" должен 💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                                    if nextdebtors!=lastdebtors:
+                                        debtors+='😇 '+str(debt.firstname) + f" должен 💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                                        onedebtors='😇 '+str(debt.firstname) + f" должен 💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                                        lastdebtors=onedebtors
+                    purch_bot.send_message(message.chat.id,debtors)
                     clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
                     clearbuylist.execute()
 
@@ -149,7 +156,6 @@ with m.db as db:
                     for c in range(0,len(checkinfo)):
                         for i,k in checkinfo[c].items():
                             conttxt+=str(k)+';'
-                            print (productid,recid)
                             if i =='Дата':
                                 groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
                                 groupid=groupdata.id
@@ -229,14 +235,19 @@ with m.db as db:
                         markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
                         purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
                         
+                        pattern = r"([ а-яА-Я]*\s?[а-я]*\s?)/.*\s?(\d)"
                         @purch_bot.message_handler(content_types=['text'])
                         def readerbuylist(message):
-                            groupdata=m.Group.select().where(m.Group.groupchatid==message.chat.id).get()
-                            groupid=groupdata.id
-                            customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
-                            customerid=customerdata.id
-                            addbuyls=BuyList()
-                            addbuyls.add_buylist(message.text,groupid,customerid)
+                            if re.match(pattern, message.text) is not None:
+                                customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
+                                customerid=customerdata.id
+                                addbuyls=BuyList()
+                                request = re.findall(pattern, message.text)
+                                for prods in request:
+                                    for i in range(int(prods[1])):
+                                        addbuyls.add_buylist(prods[0], groupid, customerid)
+                            else:
+                                purch_bot.send_message(callback.message.chat.id, f"Введите запрос корректно, {message.from_user.first_name}!")
                         
             #     seconds = 180
             #     # Вывод минут
@@ -270,7 +281,6 @@ with m.db as db:
                 updatestatzer=User()
                 updatestatzer.update_user(userid,stat=0)
                 purch_bot.send_message(callback.message.chat.id, f'💨{callback.from_user.first_name} ушел в магазин ❗ Товары больше не добавляются ❗')
-                print(groupid)
                 usbuy_tg = 'Список покупок:'
                 users_in_buylist = m.BuyList.select(m.BuyList.usid).where(m.BuyList.grid==groupid).distinct().dicts().execute()
                 for user_id in users_in_buylist:
