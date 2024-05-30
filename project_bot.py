@@ -79,14 +79,12 @@ with m.db as db:
     def callback_message(callback):
         if callback.data == 'qr':
             qr_markup = types.InlineKeyboardMarkup()
-            msg=purch_bot.send_message(callback.message.chat.id, 'Отправьте свой QR-код', reply_markup=qr_markup)
-            purch_bot.register_next_step_handler(msg,get_photo)
+            purch_bot.send_message(callback.message.chat.id, 'Отправьте свой QR-код', reply_markup=qr_markup)
     
     
         elif callback.data=='qrdec':
             qrt_markup = types.InlineKeyboardMarkup()
-            mesg=purch_bot.send_message(callback.message.chat.id, 'Отправьте расшифровку своего QR-кода', reply_markup=qrt_markup)
-            purch_bot.register_next_step_handler(mesg,get_qrwithtxt)
+            purch_bot.send_message(callback.message.chat.id, 'Отправьте расшифровку своего QR-кода', reply_markup=qrt_markup)
 
         elif callback.data == 'info':
             print('info')
