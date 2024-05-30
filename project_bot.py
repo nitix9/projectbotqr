@@ -119,11 +119,15 @@ with m.db as db:
                     answprod=queryproduct.dicts().execute()
                     queryreceipt=m.BuyList.select().where(m.BuyList.grid==groupid)
                     answrec=queryreceipt.dicts().execute()
-                    for i in answprod:
+                    for princh in answprod:
                         for s in answrec:
-                            if Levenshtein.ratio(i.get('name').lower(),s.get('product_name').lower()) >0.5:
+                            if Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()) >0.5:
+                                users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where(m.BuyList.grid==groupid).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
+                                for i in users_reqs:
+                                    print(i)
+                                print(princh)
                                 debt=m.User.get(m.User.id==s.get('usid'))
-                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f" должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.")
+                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f" должен {float(princh.get('totalprice'))} за {s.get('product_name')} - {princh.get('amount')} шт.")
                     clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
                     clearbuylist.execute()
 
@@ -227,6 +231,8 @@ with m.db as db:
                         
                         @purch_bot.message_handler(content_types=['text'])
                         def readerbuylist(message):
+                            groupdata=m.Group.select().where(m.Group.groupchatid==message.chat.id).get()
+                            groupid=groupdata.id
                             customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
                             customerid=customerdata.id
                             addbuyls=BuyList()
@@ -264,11 +270,11 @@ with m.db as db:
                 updatestatzer=User()
                 updatestatzer.update_user(userid,stat=0)
                 purch_bot.send_message(callback.message.chat.id, f'💨{callback.from_user.first_name} ушел в магазин ❗ Товары больше не добавляются ❗')
-                
+                print(groupid)
                 usbuy_tg = 'Список покупок:'
-                users_in_buylist = m.BuyList.select(m.BuyList.usid).distinct().dicts().execute()
+                users_in_buylist = m.BuyList.select(m.BuyList.usid).where(m.BuyList.grid==groupid).distinct().dicts().execute()
                 for user_id in users_in_buylist:
-                    users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == user_id['usid']).dicts().execute()
+                    users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where(m.BuyList.grid==groupid).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == user_id['usid']).dicts().execute()
                     # for i in users_reqs:
                     #     print(i)
                     user_nick = m.User.select(m.User.firstname).where(m.User.id == user_id['usid']).get().firstname
@@ -278,7 +284,7 @@ with m.db as db:
                 purch_bot.send_message(callback.message.chat.id, usbuy_tg)
 
                 read_qr(callback.message)
-
+            else:purch_bot.send_message(callback.message.chat.id, '👀 Вы не можете нажать эту кнопку, так как не вы идете в магазин!')
     
         #Поход за покупками
         # elif callback.data == 'go_shopping':
