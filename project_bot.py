@@ -12,7 +12,6 @@ from datetime import datetime
 import Levenshtein
 from peewee import fn
 import re
-import re
 
 with m.db as db:
     class Group:
@@ -147,10 +146,14 @@ with m.db as db:
                     if filtergroupuser==1:
                         markupwentshop=types.InlineKeyboardMarkup()
                         markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
-                        mesg=purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
-                        purch_bot.register_next_step_handler(mesg,readerbuylist)
+                        purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
                         
-
+                        @purch_bot.message_handler(content_types=['text'])
+                        def readerbuylist(message):
+                            customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
+                            customerid=customerdata.id
+                            addbuyls=BuyList()
+                            addbuyls.add_buylist(message.text,groupid,customerid)
                         
             #     seconds = 180
             #     # Вывод минут
@@ -281,8 +284,10 @@ with m.db as db:
                 answuserlist=userlist.dicts().execute()
                 for princh in answprod:
                     for s in answuserlist:
+                        print(Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()))
                         if Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()) >0.5:
                             users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where((m.BuyList.grid==groupid) & (m.BuyList.product_name==s.get('product_name'))).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
+                            print(users_reqs)
                             for i in users_reqs:
                                 debt=m.User.get(m.User.id==s.get('usid'))
                                 lastnicktg=nicktg
