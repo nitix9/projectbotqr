@@ -12,6 +12,7 @@ from datetime import datetime
 import Levenshtein
 from peewee import fn
 import re
+import re
 
 with m.db as db:
     class Group:
@@ -79,92 +80,14 @@ with m.db as db:
     def callback_message(callback):
         if callback.data == 'qr':
             qr_markup = types.InlineKeyboardMarkup()
-            purch_bot.send_message(callback.message.chat.id, 'Отправьте свой QR-код', reply_markup=qr_markup)
-
-            @purch_bot.message_handler(content_types=['photo'])
-            def get_photo(message):
-                photo_id = message.photo[-1].file_id
-                # Достаём картинку
-                photo_file = purch_bot.get_file(photo_id) # <class 'telebot.types.File'>
-                downloaded_photo = purch_bot.download_file(photo_file.file_path) # <class 'bytes'>
-                # Отправить в дальнейшем можно таким образом
-                fp=io.BytesIO(downloaded_photo)
-                img = Image.open(fp)
-                namepath='123.jpg'
-                img.save(namepath)
-                try:
-                    checkinfo=check.send_data(namepath,None)
-                    cont=''
-                    productid=0
-                    recid=0
-                    for c in range(0,len(checkinfo)):
-                        for i,k in checkinfo[c].items():
-                            cont+=str(k)+';'
-                            if i =='Дата':
-                                groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
-                                groupid=groupdata.id
-                                addreceipt=Receipt()
-                                recid=addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
-                                cont=cont.replace(f'{k};','')
-                            elif len(cont.split(';'))==5:
-                                sendBD=cont.split(';')
-                                addproduct=Product()
-                                productid=addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
-                                cont=''
-                            filterrec=m.ProductReceipt.select().where((m.ProductReceipt.productid_id == productid )&(m.ProductReceipt.receiptid == recid)).count()
-                            if productid!=0 and recid!=0 and filterrec==0:
-                                addpr_rec=ProductReceipt()
-                                addpr_rec.add_product_receipt(productid,recid)
-                    checkinfo=checkinfo.clear()
-                    queryproduct=m.Product.select().join(m.ProductReceipt).where(m.ProductReceipt.receiptid==recid)
-                    answprod=queryproduct.dicts().execute()
-                    queryreceipt=m.BuyList.select().where(m.BuyList.grid==groupid)
-                    answrec=queryreceipt.dicts().execute()
-                    for i in answprod:
-                        for s in answrec:
-                            if Levenshtein.ratio(i.get('name').lower(),s.get('product_name').lower()) >0.5:
-                                debt=m.User.get(m.User.id==s.get('usid'))
-                                purch_bot.send_message(message.chat.id,str(debt.firstname) + f" должен {float(i.get('totalprice'))} за {s.get('product_name')} - {i.get('amount')} шт.")
-                    clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
-                    clearbuylist.execute()
-
-                except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
-                read_qr(message)
+            mesg=purch_bot.send_message(callback.message.chat.id, 'Отправьте свой QR-код', reply_markup=qr_markup)
+            purch_bot.register_next_step_handler(mesg,get_photo)
     
     
         elif callback.data=='qrdec':
             qrt_markup = types.InlineKeyboardMarkup()
-            purch_bot.send_message(callback.message.chat.id, 'Отправьте расшифровку своего QR-кода', reply_markup=qrt_markup)
-
-            @purch_bot.message_handler(content_types=['text'])
-            def get_qrwithtxt(message):
-                try:
-                    checkinfo=check.send_data(None,str(message.text))
-                    conttxt=''
-                    productid=0
-                    recid=0
-                    for c in range(0,len(checkinfo)):
-                        for i,k in checkinfo[c].items():
-                            conttxt+=str(k)+';'
-                            print (productid,recid)
-                            if i =='Дата':
-                                groupdata=m.Group.select().where(m.Group.groupchatid==callback.message.chat.id).get()
-                                groupid=groupdata.id
-                                addreceipt=Receipt()
-                                recid=addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
-                                conttxt=conttxt.replace(f'{k};','')
-                            elif len(conttxt.split(';'))==5:
-                                sendBD=conttxt.split(';')
-                                addproduct=Product()
-                                productid=addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
-                                conttxt=''
-                            filterrec=m.ProductReceipt.select().where((m.ProductReceipt.productid_id == productid )&(m.ProductReceipt.receiptid == recid)).count()
-                            if productid!=0 and recid!=0 and filterrec==0:
-                                addpr_rec=ProductReceipt()
-                                addpr_rec.add_product_receipt(productid,recid)
-                    checkinfo=checkinfo.clear()
-                except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обработать расшифровку QR-кода, проверьте правильность расшифровки или отправьте фото QR-кода ❗')
-                read_qr(message)
+            mesg=purch_bot.send_message(callback.message.chat.id, 'Отправьте расшифровку своего QR-кода', reply_markup=qrt_markup)
+            purch_bot.register_next_step_handler(mesg,get_qrwithtxt)
 
         elif callback.data == 'info':
             print('info')
@@ -224,21 +147,10 @@ with m.db as db:
                     if filtergroupuser==1:
                         markupwentshop=types.InlineKeyboardMarkup()
                         markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
-                        purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список в формате название/количество❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
+                        mesg=purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
+                        purch_bot.register_next_step_handler(mesg,readerbuylist)
                         
-                        pattern = r"([а-яА-Я]*\s?[а-я]*\s?)/.*\s?(\d)"
-                        @purch_bot.message_handler(content_types=['text'])
-                        def readerbuylist(message):
-                            if re.match(pattern, message.text) is not None:
-                                customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
-                                customerid=customerdata.id
-                                addbuyls=BuyList()
-                                request = re.findall(pattern, message.text)
-                                for prods in request:
-                                    for i in range(int(prods[1])):
-                                        addbuyls.add_buylist(prods[0], groupid, customerid)
-                            else:
-                                purch_bot.send_message(callback.message.chat.id, f"Введите запрос корректно, {message.from_user.first_name}!")
+
                         
             #     seconds = 180
             #     # Вывод минут
@@ -272,11 +184,10 @@ with m.db as db:
                 updatestatzer=User()
                 updatestatzer.update_user(userid,stat=0)
                 purch_bot.send_message(callback.message.chat.id, f'💨{callback.from_user.first_name} ушел в магазин ❗ Товары больше не добавляются ❗')
-                
                 usbuy_tg = 'Список покупок:'
-                users_in_buylist = m.BuyList.select(m.BuyList.usid).distinct().dicts().execute()
+                users_in_buylist = m.BuyList.select(m.BuyList.usid).where(m.BuyList.grid==groupid).distinct().dicts().execute()
                 for user_id in users_in_buylist:
-                    users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == user_id['usid']).dicts().execute()
+                    users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where(m.BuyList.grid==groupid).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == user_id['usid']).dicts().execute()
                     # for i in users_reqs:
                     #     print(i)
                     user_nick = m.User.select(m.User.firstname).where(m.User.id == user_id['usid']).get().firstname
@@ -286,7 +197,7 @@ with m.db as db:
                 purch_bot.send_message(callback.message.chat.id, usbuy_tg)
 
                 read_qr(callback.message)
-
+            else:purch_bot.send_message(callback.message.chat.id, '👀 Вы не можете нажать эту кнопку, так как не вы идете в магазин!')
     
         #Поход за покупками
         # elif callback.data == 'go_shopping':
@@ -325,5 +236,149 @@ with m.db as db:
         #         print(buy_list)
         #         print(len(buy_list['users']))
         #         print(callback.data)
+    def get_photo(message):
+        photo_id = message.photo[-1].file_id
+        # Достаём картинку
+        photo_file = purch_bot.get_file(photo_id) # <class 'telebot.types.File'>
+        downloaded_photo = purch_bot.download_file(photo_file.file_path) # <class 'bytes'>
+        # Отправить в дальнейшем можно таким образом
+        fp=io.BytesIO(downloaded_photo)
+        img = Image.open(fp)
+        namepath='123.jpg'
+        img.save(namepath)
+        try:
+            checkinfo=check.send_data(namepath,None)
+            cont=''
+            productid=0
+            recid=0
+            for c in range(0,len(checkinfo)):
+                for i,k in checkinfo[c].items():
+                    cont+=str(k)+';'
+                    if i =='Дата':
+                        groupdata=m.Group.select().where(m.Group.groupchatid==message.chat.id).get()
+                        groupid=groupdata.id
+                        addreceipt=Receipt()
+                        recid=addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
+                        cont=cont.replace(f'{k};','')
+                    elif len(cont.split(';'))==5:
+                        sendBD=cont.split(';')
+                        addproduct=Product()
+                        productid=addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
+                        cont=''
+                    filterrec=m.ProductReceipt.select().where((m.ProductReceipt.productid_id == productid )&(m.ProductReceipt.receiptid == recid)).count()
+                    if productid!=0 and recid!=0 and filterrec==0:
+                        addpr_rec=ProductReceipt()
+                        addpr_rec.add_product_receipt(productid,recid)
+            checkinfo=checkinfo.clear()
+            queryproduct=m.Product.select().join(m.ProductReceipt).where(m.ProductReceipt.receiptid==recid)
+            answprod=queryproduct.dicts().execute()
+            queryreceipt=m.BuyList.select(m.BuyList.usid).where(m.BuyList.grid==groupid)
+            answrec=queryreceipt.dicts().execute()
+            debtors=''
+            nicktg=''
+            for user_id in answrec:
+                userlist=m.BuyList.select().where((m.BuyList.grid==groupid) & (m.BuyList.usid==user_id['usid']))
+                answuserlist=userlist.dicts().execute()
+                for princh in answprod:
+                    for s in answuserlist:
+                        if Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()) >0.5:
+                            users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where((m.BuyList.grid==groupid) & (m.BuyList.product_name==s.get('product_name'))).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
+                            for i in users_reqs:
+                                debt=m.User.get(m.User.id==s.get('usid'))
+                                lastnicktg=nicktg
+                                nicktg='\n 😇 '+str(debt.firstname)+' нужно отдать \n'
+                                if nicktg==lastnicktg:
+                                    debtors+=f"💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                                else:debtors+=f"{nicktg}💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                            filterdel=m.BuyList.select().where((m.BuyList.grid==groupid) & (m.BuyList.usid==user_id['usid']) & (m.BuyList.product_name==s.get('product_name'))).count()
+                            if filterdel!=0:
+                                clearbuylist = m.BuyList.delete().where((m.BuyList.usid==user_id['usid']) & (m.BuyList.product_name==s.get('product_name')) & (m.BuyList.grid==groupid))
+                                clearbuylist.execute()
+            purch_bot.send_message(message.chat.id,debtors)
+            clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
+            clearbuylist.execute()
 
+        except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
+        greeting(message)
+    
+    def get_qrwithtxt(message):
+        try:
+            checkinfo=check.send_data(None,str(message.text))
+            conttxt=''
+            productid=0
+            recid=0
+            for c in range(0,len(checkinfo)):
+                for i,k in checkinfo[c].items():
+                    conttxt+=str(k)+';'
+                    if i =='Дата':
+                        groupdata=m.Group.select().where(m.Group.groupchatid==message.chat.id).get()
+                        groupid=groupdata.id
+                        addreceipt=Receipt()
+                        recid=addreceipt.add_receipt(groupid,datetime.fromtimestamp(k))
+                        conttxt=conttxt.replace(f'{k};','')
+                    elif len(conttxt.split(';'))==5:
+                        sendBD=conttxt.split(';')
+                        addproduct=Product()
+                        productid=addproduct.add_product(sendBD[0],sendBD[2],sendBD[1],sendBD[3])
+                        conttxt=''
+                    filterrec=m.ProductReceipt.select().where((m.ProductReceipt.productid_id == productid )&(m.ProductReceipt.receiptid == recid)).count()
+                    if productid!=0 and recid!=0 and filterrec==0:
+                        addpr_rec=ProductReceipt()
+                        addpr_rec.add_product_receipt(productid,recid)
+            checkinfo=checkinfo.clear()
+            queryproduct=m.Product.select().join(m.ProductReceipt).where(m.ProductReceipt.receiptid==recid)
+            answprod=queryproduct.dicts().execute()
+            queryreceipt=m.BuyList.select(m.BuyList.usid).where(m.BuyList.grid==groupid)
+            answrec=queryreceipt.dicts().execute()
+            debtors=''
+            nicktg=''
+            for user_id in answrec:
+                userlist=m.BuyList.select().where((m.BuyList.grid==groupid) & (m.BuyList.usid==user_id['usid']))
+                answuserlist=userlist.dicts().execute()
+                for princh in answprod:
+                    for s in answuserlist:
+                        if Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()) >0.5:
+                            users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where((m.BuyList.grid==groupid) & (m.BuyList.product_name==s.get('product_name'))).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
+                            for i in users_reqs:
+                                debt=m.User.get(m.User.id==s.get('usid'))
+                                lastnicktg=nicktg
+                                nicktg='\n 😇 '+str(debt.firstname)+' нужно отдать \n'
+                                if nicktg==lastnicktg:
+                                    debtors+=f"💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                                else:debtors+=f"{nicktg}💸 {float(princh.get('price_one_piece'))*int(i['amount_prod'])} 💸 за 🛒 {s.get('product_name')} 🛒 - ✨ {i['amount_prod']} шт. ✨\n"
+                            filterdel=m.BuyList.select().where((m.BuyList.grid==groupid) & (m.BuyList.usid==user_id['usid']) & (m.BuyList.product_name==s.get('product_name'))).count()
+                            if filterdel!=0:
+                                clearbuylist = m.BuyList.delete().where((m.BuyList.usid==user_id['usid']) & (m.BuyList.product_name==s.get('product_name')) & (m.BuyList.grid==groupid))
+                                clearbuylist.execute()
+            purch_bot.send_message(message.chat.id,debtors)
+            clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
+            clearbuylist.execute()
+        except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обработать расшифровку QR-кода, проверьте правильность расшифровки или отправьте фото QR-кода ❗')
+        greeting(message)
+    
+    def readerbuylist(message):
+        pattern = r"([ а-яА-Я]*\s?[а-я]*\s?)/*\s?([0-9]+)"
+        regcheck=r"([a-zA-Z])+=(\d+)"
+        if message.content_type=='photo':
+            purch_bot.register_next_step_handler(message,get_photo)
+        elif re.match(pattern, message.text) is not None:
+            groupdata=m.Group.select().where(m.Group.groupchatid==message.chat.id).get()
+            groupid=groupdata.id
+            customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
+            customerid=customerdata.id
+            addbuyls=BuyList()
+            request = re.findall(pattern, message.text)
+            for prods in request:
+                for i in range(int(prods[1])):
+                    addbuyls.add_buylist(prods[0], groupid, customerid)
+            mesg=purch_bot.send_message(message.chat.id, f"Записано ✅")
+            purch_bot.register_next_step_handler(mesg,readerbuylist)
+            purch_bot.delete_message(message.chat.id,message.message_id+1)
+        elif re.match(regcheck,message.text) is not None:
+            purch_bot.register_next_step_handler(message,get_qrwithtxt)
+        else:
+            print(message.text)
+            print(re.match(regcheck,message.text))
+            mesg=purch_bot.send_message(message.chat.id, f"Введите запрос корректно, {message.from_user.first_name}!")
+            purch_bot.register_next_step_handler(mesg,readerbuylist)
     purch_bot.infinity_polling()
