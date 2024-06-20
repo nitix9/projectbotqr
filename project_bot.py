@@ -12,7 +12,6 @@ from datetime import datetime
 import Levenshtein
 from peewee import fn
 import re
-
 with m.db as db:
     class Group:
         def create_group (self,namegroup,idgroup) :
@@ -50,13 +49,10 @@ with m.db as db:
         def add_buylist(self,prdname,gid,uid):
             add_buyl=m.BuyList(product_name=prdname,grid=gid,usid=uid)
             add_buyl.save()
-
     load_dotenv('data.env')
     purch_bot = tb.TeleBot(os.getenv('API'))
-
     buy_list = {'ready_users': 0,
                         'users': {}}
-
     @purch_bot.message_handler(commands=['start', 'about'])
     def greeting(message):
         markup = types.InlineKeyboardMarkup()
@@ -65,24 +61,20 @@ with m.db as db:
         markup.add(types.InlineKeyboardButton(text='🤔 Как использовать бота❔', callback_data='info'))
         markup.add(types.InlineKeyboardButton(text='🛍 Собираюсь идти в магазин', callback_data='goingshop'))
         purch_bot.send_message(message.chat.id, 'Выберите действие', reply_markup=markup)
-
-
     def read_qr(message):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(text='Отправить QR-код', callback_data='qr'))
         markup.add(types.InlineKeyboardButton(text='Отправить расшифровку QR-кода', callback_data='qrdec'))
         
         purch_bot.send_message(message.chat.id, 'После покупки, выберите действие', reply_markup=markup)
-
-
     @purch_bot.callback_query_handler(func = lambda callback: True)
     def callback_message(callback):
         if callback.data == 'qr':
             qr_markup = types.InlineKeyboardMarkup()
             mesg=purch_bot.send_message(callback.message.chat.id, 'Отправьте свой QR-код', reply_markup=qr_markup)
             purch_bot.register_next_step_handler(mesg,get_photo)
-    
-    
+
+
         elif callback.data=='qrdec':
             qrt_markup = types.InlineKeyboardMarkup()
             mesg=purch_bot.send_message(callback.message.chat.id, 'Отправьте расшифровку своего QR-кода', reply_markup=qrt_markup)
@@ -146,14 +138,9 @@ with m.db as db:
                     if filtergroupuser==1:
                         markupwentshop=types.InlineKeyboardMarkup()
                         markupwentshop.add(types.InlineKeyboardButton(text='🛑 Ушел в магазин', callback_data='wentshop'))
-                        purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
+                        mesg=purch_bot.send_message(callback.message.chat.id, f'🛒{callback.from_user.first_name} собирается идти в магазин, кому-нибудь нужно что-то купить⁉ Пишите список❗📄 Как только {callback.from_user.first_name} нажмет на кнопку ниже 👇, добавление товара закончится ❗',reply_markup=markupwentshop)
+                        purch_bot.register_next_step_handler(mesg,readerbuylist)
                         
-                        @purch_bot.message_handler(content_types=['text'])
-                        def readerbuylist(message):
-                            customerdata=m.User.select().where(m.User.tgid==message.from_user.id).get()
-                            customerid=customerdata.id
-                            addbuyls=BuyList()
-                            addbuyls.add_buylist(message.text,groupid,customerid)
                         
             #     seconds = 180
             #     # Вывод минут
@@ -165,11 +152,9 @@ with m.db as db:
             #         threading.Event().wait(1) # Ожидание 1 секунду
             #     purch_bot.send_message(callback.message.chat.id, 'Время вышло, список сформирован!')
             #     read_qr(callback.message)
-
             #     # def Ready():
             #     #     purch_bot.send_message(callback.message.chat.id, 'Время вышло, список сформирован!')
             #     #     read_qr(callback.message)
-
             #     # timer = threading.Timer(10, Ready)
             #     # timer.start()
                     else:
@@ -198,7 +183,6 @@ with m.db as db:
                     for prod in users_reqs:
                         usbuy_tg += "🧺 " + prod['product_name'] + " " +str(prod['amount_prod']) + ' шт.\n'
                 purch_bot.send_message(callback.message.chat.id, usbuy_tg)
-
                 read_qr(callback.message)
             else:purch_bot.send_message(callback.message.chat.id, '👀 Вы не можете нажать эту кнопку, так как не вы идете в магазин!')
     
@@ -224,7 +208,6 @@ with m.db as db:
         #Добавление в список
         # elif callback.data == 'buy_list':
         #     purch_bot.send_message(callback.message.chat.id, 'Напишите список покупок. И когда закончите нажмите кнопку "Готово".')
-
         #     @purch_bot.message_handler(content_types=['text'])
         #     def add_in_list(message):
         #         if message.from_user.id not in buy_list['users']:
@@ -235,7 +218,6 @@ with m.db as db:
         #         list_markup = types.InlineKeyboardMarkup()
         #         list_markup.add(types.InlineKeyboardButton(text='Готово', callback_data='ready'))
         #         purch_bot.send_message(callback.message.chat.id, 'Что бы вы ещё хотели добавить?', reply_markup=list_markup)
-
         #         print(buy_list)
         #         print(len(buy_list['users']))
         #         print(callback.data)
@@ -284,10 +266,8 @@ with m.db as db:
                 answuserlist=userlist.dicts().execute()
                 for princh in answprod:
                     for s in answuserlist:
-                        print(Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()))
                         if Levenshtein.ratio(princh.get('name').lower(),s.get('product_name').lower()) >0.5:
                             users_reqs = m.BuyList.select(m.BuyList.product_name, fn.COUNT(m.BuyList.product_name).alias('amount_prod')).where((m.BuyList.grid==groupid) & (m.BuyList.product_name==s.get('product_name'))).distinct().group_by(m.BuyList.product_name).where(m.BuyList.usid == s.get('usid')).dicts().execute()
-                            print(users_reqs)
                             for i in users_reqs:
                                 debt=m.User.get(m.User.id==s.get('usid'))
                                 lastnicktg=nicktg
@@ -302,7 +282,6 @@ with m.db as db:
             purch_bot.send_message(message.chat.id,debtors)
             clearbuylist = m.BuyList.delete().where(m.BuyList.grid==groupid)
             clearbuylist.execute()
-
         except Exception as e:print(e)#purch_bot.send_message(message.chat.id,text='❗ Не удалось обнаружить QR-код, отправьте четкое изображение QR-кода или его расшифровку ❗')
         greeting(message)
     
