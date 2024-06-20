@@ -158,7 +158,9 @@ with m.db as db:
             #     # timer = threading.Timer(10, Ready)
             #     # timer.start()
                     else:
-                        purch_bot.send_message(callback.message.chat.id, 'Вы не можете запустить таймер, так как не состоите в группе!')
+                        markupaddusingroup=types.InlineKeyboardMarkup()
+                        markupaddusingroup.add(types.InlineKeyboardButton(text='💎', callback_data='add_user_group'))
+                        purch_bot.send_message(callback.message.chat.id, '😡 Вы не можете пойти в магазин, так как не состоите в группе❗Для добавления в группу нажмите на кнопку ниже ⬇',reply_markup=markupaddusingroup)
                 else:
                     purch_bot.send_message(callback.message.chat.id, '😡 У вас уже есть человек, который пойдет в магазин❗')
         
